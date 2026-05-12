@@ -7,6 +7,12 @@ const cleanEnv = (value) => {
 const supabaseUrl = cleanEnv(import.meta.env.VITE_SUPABASE_URL);
 const supabaseAnonKey = cleanEnv(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
+console.log('[SUPABASE DEBUG]', {
+  supabaseUrl,
+  hasAnonKey: Boolean(supabaseAnonKey),
+  anonKeyStart: supabaseAnonKey ? supabaseAnonKey.slice(0, 12) : null,
+});
+
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env ou no Netlify.');
 }
@@ -40,6 +46,8 @@ export async function requireCurrentUser() {
 }
 
 export function getFriendlySupabaseError(error) {
+  console.error('[SUPABASE ERROR COMPLETO]', error);
+
   if (!error) {
     return 'Erro inesperado.';
   }
@@ -55,7 +63,7 @@ export function getFriendlySupabaseError(error) {
   }
 
   if (message.includes('Failed to fetch')) {
-    return 'Não foi possível conectar ao Supabase. Verifique a URL, a chave pública e as variáveis de ambiente.';
+    return 'Falha ao conectar no Supabase. Abra o Console e a aba Network para ver a URL e o erro real da requisição.';
   }
 
   if (message.includes('JWT')) {
