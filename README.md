@@ -113,3 +113,27 @@ npm run preview
 - Histórico visual de auditoria por entidade.
 - Gráficos financeiros com Recharts.
 - Testes automatizados com Vitest e Testing Library.
+
+## Funções de Role
+admin:
+- Cadastrar cliente
+- Editar cliente
+- Inativar cliente
+- Criar empréstimo
+- Registrar pagamento
+- Visualizar financeiro
+- Futuramente gerenciar usuários
+
+operator:
+- Cadastrar cliente
+- Editar cliente
+- Criar empréstimo
+- Registrar pagamento
+- Visualizar financeiro
+- Não deve excluir/inativar coisas críticas, dependendo dos botões que bloqueamos
+
+viewer:
+- Visualizar telas
+- Não cadastrar
+- Não editar
+- Não registrar pagamento
