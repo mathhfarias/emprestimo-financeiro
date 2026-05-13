@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import AuditTrail from '../components/cards/AuditTrail.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import PermissionGate from '../components/ui/PermissionGate.jsx';
@@ -172,6 +173,14 @@ export default function ClientDetails() {
           emptyTitle="Nenhum empréstimo para este cliente"
         />
       </section>
+      
+        <AuditTrail
+        entity="clients"
+        entityId={client.id}
+        title="Histórico do cliente"
+        description="Veja alterações, empréstimos e pagamentos relacionados a este cliente."
+        />
+
     </div>
   );
 }

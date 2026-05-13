@@ -103,8 +103,8 @@ npm run preview
 
 ## Sugestões futuras
 
-- Controle de permissões por papel: admin, operador e somente leitura.
-- Tela de cadastro de usuários administradores.
+1. Controle de permissões por papel: concluído
+2. Tela de cadastro/gestão de usuários administradores: concluído na versão segura
 - Anexos de documentos do cliente usando Supabase Storage.
 - Contrato PDF gerado automaticamente.
 - Notificações de vencimento por e-mail ou WhatsApp.

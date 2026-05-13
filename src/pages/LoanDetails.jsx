@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AuditTrail from '../components/cards/AuditTrail.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import FinancialCard from '../components/cards/FinancialCard.jsx';
@@ -233,6 +234,13 @@ export default function LoanDetails() {
           emptyTitle="Nenhuma parcela encontrada"
         />
       </section>
+
+        <AuditTrail
+          entity="loans"
+          entityId={loan.id}
+          title="Histórico do empréstimo"
+          description="Veja alterações, parcelas e pagamentos relacionados a este empréstimo."
+        />
 
       <PaymentModal
         open={paymentOpen}
