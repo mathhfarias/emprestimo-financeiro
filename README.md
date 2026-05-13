@@ -106,14 +106,13 @@ npm run preview
 1. Controle de permissões por papel ✅
 2. Tela de gestão de usuários ✅
 3. Histórico visual de auditoria ✅
-- Multas e juros por atraso.
-3. Anexos de documentos do cliente usando Supabase Storage.
-- Contrato PDF gerado automaticamente.
-- Notificações de vencimento por e-mail ou WhatsApp.
-- Renegociação de empréstimo.
-- Histórico visual de auditoria por entidade.
-- Gráficos financeiros com Recharts.
-- Testes automatizados com Vitest e Testing Library.
+4. Multas e juros por atraso ✅
+5. Renegociação de empréstimo ✅
+6. Contrato PDF automático
+7. Anexos de documentos com Supabase Storage
+8. Notificações de vencimento
+9. Gráficos financeiros com Recharts
+10. Testes automatizados
 
 ## Funções de Role
 admin:

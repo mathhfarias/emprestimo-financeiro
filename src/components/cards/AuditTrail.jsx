@@ -4,6 +4,7 @@ import {
   FileClock,
   PlusCircle,
   RefreshCw,
+  Repeat2,
   Trash2,
   User,
 } from 'lucide-react';
@@ -26,6 +27,11 @@ const ACTION_CONFIG = {
     label: 'Exclusão',
     icon: Trash2,
     className: 'bg-red-50 text-red-700 ring-red-100',
+  },
+  renegotiate: {
+    label: 'Renegociação',
+    icon: Repeat2,
+    className: 'bg-amber-50 text-amber-700 ring-amber-100',
   },
 };
 
