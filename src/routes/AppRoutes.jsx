@@ -9,11 +9,13 @@ import Loans from '../pages/Loans.jsx';
 import LoanDetails from '../pages/LoanDetails.jsx';
 import Financial from '../pages/Financial.jsx';
 import Settings from '../pages/Settings.jsx';
+import Users from '../pages/Users.jsx';
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -23,9 +25,11 @@ export default function AppRoutes() {
           <Route path="/emprestimos" element={<Loans />} />
           <Route path="/emprestimos/:id" element={<LoanDetails />} />
           <Route path="/financeiro" element={<Financial />} />
+          <Route path="/usuarios" element={<Users />} />
           <Route path="/configuracoes" element={<Settings />} />
         </Route>
       </Route>
+
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

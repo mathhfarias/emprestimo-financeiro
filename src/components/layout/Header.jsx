@@ -3,17 +3,18 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import Button from '../ui/Button.jsx';
 
-const mobileLinks = [
-  ['/dashboard', 'Dashboard'],
-  ['/clientes', 'Clientes'],
-  ['/emprestimos', 'Empréstimos'],
-  ['/financeiro', 'Financeiro'],
-];
-
 export default function Header() {
-  const { user, profile, roleLabel, signOut } = useAuth();
+  const { user, profile, roleLabel, isAdmin, signOut } = useAuth();
 
   const displayName = profile?.name || user?.email || 'Usuário';
+
+  const mobileLinks = [
+    ['/dashboard', 'Dashboard'],
+    ['/clientes', 'Clientes'],
+    ['/emprestimos', 'Empréstimos'],
+    ['/financeiro', 'Financeiro'],
+    ...(isAdmin ? [['/usuarios', 'Usuários']] : []),
+  ];
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/90 backdrop-blur">

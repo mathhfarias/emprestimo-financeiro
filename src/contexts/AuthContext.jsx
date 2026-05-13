@@ -16,18 +16,27 @@ import {
 
 const AuthContext = createContext(null);
 
+const DEFAULT_PROFILE = (user) => ({
+  id: user?.id || null,
+  name: user?.email || 'Usuário',
+  role: 'viewer',
+});
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const loadProfile = useCallback(async (currentUser) => {
+    if (!currentUser) {
+      setProfile(null);
+      return null;
+    }
+
     try {
-      if (!currentUser) {
-        setProfile(null);
-        return null;
-      }
+      setProfileLoading(true);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -37,29 +46,23 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error('[PROFILE ERROR]', error);
+        const fallback = DEFAULT_PROFILE(currentUser);
+        setProfile(fallback);
+        return fallback;
       }
 
-      const fallbackProfile = {
-        id: currentUser.id,
-        name: currentUser.email || 'Usuário',
-        role: 'viewer',
-      };
-
-      const finalProfile = data || fallbackProfile;
+      const finalProfile = data || DEFAULT_PROFILE(currentUser);
 
       setProfile(finalProfile);
       return finalProfile;
     } catch (error) {
       console.error('[LOAD PROFILE ERROR]', error);
 
-      const fallbackProfile = {
-        id: currentUser?.id,
-        name: currentUser?.email || 'Usuário',
-        role: 'viewer',
-      };
-
-      setProfile(fallbackProfile);
-      return fallbackProfile;
+      const fallback = DEFAULT_PROFILE(currentUser);
+      setProfile(fallback);
+      return fallback;
+    } finally {
+      setProfileLoading(false);
     }
   }, []);
 
@@ -82,8 +85,12 @@ export function AuthProvider({ children }) {
         setSession(currentSession);
         setUser(currentUser);
 
+        // Libera a tela logo depois de verificar a sessão.
+        setLoading(false);
+
+        // Busca o profile depois, sem travar a tela eternamente.
         if (currentUser) {
-          await loadProfile(currentUser);
+          loadProfile(currentUser);
         } else {
           setProfile(null);
         }
@@ -94,9 +101,6 @@ export function AuthProvider({ children }) {
           setSession(null);
           setUser(null);
           setProfile(null);
-        }
-      } finally {
-        if (isMounted) {
           setLoading(false);
         }
       }
@@ -104,44 +108,59 @@ export function AuthProvider({ children }) {
 
     initAuth();
 
-    const authListener = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        const currentUser = newSession?.user || null;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      const currentUser = newSession?.user || null;
 
-        setSession(newSession);
-        setUser(currentUser);
+      setSession(newSession);
+      setUser(currentUser);
+      setLoading(false);
 
-        if (currentUser) {
-          await loadProfile(currentUser);
-        } else {
-          setProfile(null);
-        }
-
-        setLoading(false);
+      if (currentUser) {
+        loadProfile(currentUser);
+      } else {
+        setProfile(null);
       }
-    );
+    });
 
     return () => {
       isMounted = false;
-      authListener?.data?.subscription?.unsubscribe?.();
+      subscription?.unsubscribe?.();
     };
   }, [loadProfile]);
 
   async function signIn(email, password) {
-    return supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (error) {
+      throw error;
+    }
+
+    const currentUser = data?.user || null;
+
+    if (currentUser) {
+      setUser(currentUser);
+      setSession(data.session);
+      await loadProfile(currentUser);
+    }
+
+    return data;
   }
 
   async function signOut() {
-    const response = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      throw error;
+    }
 
     setSession(null);
     setUser(null);
     setProfile(null);
-
-    return response;
   }
 
   const role = profile?.role || 'viewer';
@@ -154,6 +173,7 @@ export function AuthProvider({ children }) {
       role,
       roleLabel: getRoleLabel(role),
       loading,
+      profileLoading,
       signIn,
       signOut,
       reloadProfile: () => loadProfile(user),
@@ -162,7 +182,7 @@ export function AuthProvider({ children }) {
       isAdmin: checkIsAdmin(role),
       isAuthenticated: Boolean(user),
     }),
-    [session, user, profile, role, loading, loadProfile]
+    [session, user, profile, role, loading, profileLoading, loadProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

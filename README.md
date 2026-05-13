@@ -137,3 +137,20 @@ viewer:
 - Não cadastrar
 - Não editar
 - Não registrar pagamento
+
+Viewer:
+- Não vê botão de novo cliente
+- Não vê botão de editar
+- Não vê botão de registrar pagamento
+
+## Botões e permissões
+
+Operator:
+- Vê criar cliente
+- Vê editar cliente
+- Vê criar empréstimo
+- Vê registrar pagamento
+- Não vê ações administrativas críticas
+
+Admin:
+- Vê tudo
