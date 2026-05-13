@@ -103,12 +103,13 @@ npm run preview
 
 ## Sugestões futuras
 
-1. Controle de permissões por papel: concluído
-2. Tela de cadastro/gestão de usuários administradores: concluído na versão segura
-- Anexos de documentos do cliente usando Supabase Storage.
+1. Controle de permissões por papel ✅
+2. Tela de gestão de usuários ✅
+3. Histórico visual de auditoria ✅
+- Multas e juros por atraso.
+3. Anexos de documentos do cliente usando Supabase Storage.
 - Contrato PDF gerado automaticamente.
 - Notificações de vencimento por e-mail ou WhatsApp.
-- Multas e juros por atraso.
 - Renegociação de empréstimo.
 - Histórico visual de auditoria por entidade.
 - Gráficos financeiros com Recharts.

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import AuditTrail from '../components/cards/AuditTrail.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import FinancialCard from '../components/cards/FinancialCard.jsx';
 import PaymentModal from '../components/forms/PaymentModal.jsx';
 import PermissionGate from '../components/ui/PermissionGate.jsx';
 import SimpleTable from '../components/tables/SimpleTable.jsx';
+import AuditTrail from '../components/cards/AuditTrail.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getLoanById } from '../services/loansService.js';
 import {
@@ -14,7 +14,10 @@ import {
   registerInstallmentPayment,
 } from '../services/installmentsService.js';
 import { getFriendlySupabaseError } from '../services/supabase.js';
-import { sumBy } from '../utils/calculations.js';
+import {
+  calculateLateInstallment,
+  sumBy,
+} from '../utils/calculations.js';
 import {
   formatCurrency,
   formatDate,
@@ -82,16 +85,43 @@ export default function LoanDetails() {
     setPaymentOpen(true);
   }
 
+  const enrichedInstallments = useMemo(() => {
+    return installments.map((installment) => {
+      const lateCalculation = calculateLateInstallment({
+        amount: installment.amount,
+        dueDate: installment.due_date,
+        status: installment.status,
+        lateFeeRate: loan?.late_fee_rate,
+        dailyLateInterestRate: loan?.daily_late_interest_rate,
+      });
+
+      return {
+        ...installment,
+        ...lateCalculation,
+      };
+    });
+  }, [installments, loan]);
+
   const summary = useMemo(() => {
-    const paid = installments.filter((item) => item.status === 'paid');
-    const pending = installments.filter((item) => item.status === 'pending');
-    const overdue = installments.filter((item) => item.status === 'overdue');
+    const paid = enrichedInstallments.filter((item) => item.status === 'paid');
+    const pending = enrichedInstallments.filter(
+      (item) => item.status === 'pending'
+    );
+    const overdue = enrichedInstallments.filter(
+      (item) => item.status === 'overdue' || item.daysLate > 0
+    );
+
+    const openInstallments = enrichedInstallments.filter(
+      (item) => !['paid', 'cancelled'].includes(item.status)
+    );
 
     const received = sumBy(paid, (item) => item.paid_amount || item.amount);
 
-    const pendingValue = Math.max(
-      Number(loan?.total_amount || 0) - received,
-      0
+    const pendingValue = Math.max(Number(loan?.total_amount || 0) - received, 0);
+
+    const updatedOpenValue = sumBy(
+      openInstallments,
+      (item) => item.updatedAmount
     );
 
     return {
@@ -100,8 +130,9 @@ export default function LoanDetails() {
       overdue,
       received,
       pendingValue,
+      updatedOpenValue,
     };
-  }, [installments, loan]);
+  }, [enrichedInstallments, loan]);
 
   if (loading) {
     return <p className="text-sm text-slate-500">Carregando empréstimo...</p>;
@@ -125,13 +156,23 @@ export default function LoanDetails() {
     },
     {
       key: 'amount',
-      header: 'Valor',
+      header: 'Valor original',
       render: (row) => formatCurrency(row.amount),
     },
     {
       key: 'due_date',
       header: 'Vencimento',
       render: (row) => formatDate(row.due_date),
+    },
+    {
+      key: 'daysLate',
+      header: 'Dias atraso',
+      render: (row) => (row.daysLate > 0 ? row.daysLate : '-'),
+    },
+    {
+      key: 'updatedAmount',
+      header: 'Valor atualizado',
+      render: (row) => formatCurrency(row.updatedAmount),
     },
     {
       key: 'payment_date',
@@ -176,29 +217,37 @@ export default function LoanDetails() {
             Empréstimo de {loan.client?.name}
           </h1>
           <p className="text-sm text-slate-500">
-            Resumo financeiro e controle das parcelas.
+            Resumo financeiro, regras de atraso e controle das parcelas.
           </p>
         </div>
 
         <Badge status={loan.status} />
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <FinancialCard
           title="Valor emprestado"
           value={formatCurrency(loan.principal_amount)}
         />
+
         <FinancialCard
           title="Total a receber"
           value={formatCurrency(loan.total_amount)}
         />
+
         <FinancialCard
           title="Já recebido"
           value={formatCurrency(summary.received)}
         />
+
         <FinancialCard
-          title="Pendente"
+          title="Pendente original"
           value={formatCurrency(summary.pendingValue)}
+        />
+
+        <FinancialCard
+          title="Em aberto atualizado"
+          value={formatCurrency(summary.updatedOpenValue)}
         />
       </section>
 
@@ -207,21 +256,38 @@ export default function LoanDetails() {
           label="Juros mensal"
           value={formatPercent(loan.monthly_interest_rate)}
         />
+
+        <Info
+          label="Multa por atraso"
+          value={formatPercent(loan.late_fee_rate)}
+        />
+
+        <Info
+          label="Juros diário por atraso"
+          value={formatPercent(loan.daily_late_interest_rate)}
+        />
+
         <Info
           label="Parcelas pagas"
           value={`${summary.paid.length}/${installments.length}`}
         />
+
         <Info label="Parcelas pendentes" value={summary.pending.length} />
+
         <Info label="Parcelas atrasadas" value={summary.overdue.length} />
+
         <Info label="Data inicial" value={formatDate(loan.start_date)} />
+
         <Info
           label="Primeiro vencimento"
           value={formatDate(loan.first_due_date)}
         />
+
         <Info
           label="Valor da parcela"
           value={formatCurrency(loan.installment_amount)}
         />
+
         <Info label="Observações" value={loan.notes} />
       </section>
 
@@ -230,17 +296,17 @@ export default function LoanDetails() {
 
         <SimpleTable
           columns={columns}
-          data={installments}
+          data={enrichedInstallments}
           emptyTitle="Nenhuma parcela encontrada"
         />
       </section>
 
-        <AuditTrail
-          entity="loans"
-          entityId={loan.id}
-          title="Histórico do empréstimo"
-          description="Veja alterações, parcelas e pagamentos relacionados a este empréstimo."
-        />
+      <AuditTrail
+        entity="loans"
+        entityId={loan.id}
+        title="Histórico do empréstimo"
+        description="Veja alterações, parcelas e pagamentos relacionados a este empréstimo."
+      />
 
       <PaymentModal
         open={paymentOpen}
