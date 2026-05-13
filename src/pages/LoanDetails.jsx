@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Repeat2 } from 'lucide-react';
 import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import FinancialCard from '../components/cards/FinancialCard.jsx';
 import PaymentModal from '../components/forms/PaymentModal.jsx';
+import RenegotiationModal from '../components/forms/RenegotiationModal.jsx';
 import PermissionGate from '../components/ui/PermissionGate.jsx';
 import SimpleTable from '../components/tables/SimpleTable.jsx';
 import AuditTrail from '../components/cards/AuditTrail.jsx';
@@ -13,6 +15,7 @@ import {
   listInstallmentsByLoan,
   registerInstallmentPayment,
 } from '../services/installmentsService.js';
+import { renegotiateLoan } from '../services/renegotiationsService.js';
 import { getFriendlySupabaseError } from '../services/supabase.js';
 import {
   calculateLateInstallment,
@@ -33,8 +36,10 @@ export default function LoanDetails() {
   const [installments, setInstallments] = useState([]);
   const [selectedInstallment, setSelectedInstallment] = useState(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [renegotiationOpen, setRenegotiationOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [renegotiating, setRenegotiating] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -80,6 +85,33 @@ export default function LoanDetails() {
     }
   }
 
+  async function handleRenegotiationSubmit(payload) {
+    try {
+      if (!hasPermission(PERMISSIONS.LOAN_RENEGOTIATE)) {
+        setError('Você não tem permissão para renegociar empréstimos.');
+        return;
+      }
+
+      setRenegotiating(true);
+      setError('');
+
+      await renegotiateLoan({
+        loanId: loan.id,
+        newMonthlyInterestRate: payload.newMonthlyInterestRate,
+        newInstallmentsCount: payload.newInstallmentsCount,
+        firstDueDate: payload.firstDueDate,
+        notes: payload.notes,
+      });
+
+      setRenegotiationOpen(false);
+      await loadData();
+    } catch (err) {
+      setError(getFriendlySupabaseError(err));
+    } finally {
+      setRenegotiating(false);
+    }
+  }
+
   function openPaymentModal(installment) {
     setSelectedInstallment(installment);
     setPaymentOpen(true);
@@ -104,9 +136,11 @@ export default function LoanDetails() {
 
   const summary = useMemo(() => {
     const paid = enrichedInstallments.filter((item) => item.status === 'paid');
+
     const pending = enrichedInstallments.filter(
       (item) => item.status === 'pending'
     );
+
     const overdue = enrichedInstallments.filter(
       (item) => item.status === 'overdue' || item.daysLate > 0
     );
@@ -117,7 +151,10 @@ export default function LoanDetails() {
 
     const received = sumBy(paid, (item) => item.paid_amount || item.amount);
 
-    const pendingValue = Math.max(Number(loan?.total_amount || 0) - received, 0);
+    const pendingValue = Math.max(
+      Number(loan?.total_amount || 0) - received,
+      0
+    );
 
     const updatedOpenValue = sumBy(
       openInstallments,
@@ -128,6 +165,7 @@ export default function LoanDetails() {
       paid,
       pending,
       overdue,
+      openInstallments,
       received,
       pendingValue,
       updatedOpenValue,
@@ -147,6 +185,11 @@ export default function LoanDetails() {
   }
 
   if (!loan) return null;
+
+  const canRenegotiate =
+    !['paid', 'cancelled'].includes(loan.status) &&
+    summary.openInstallments.length > 0 &&
+    summary.updatedOpenValue > 0;
 
   const columns = [
     {
@@ -211,17 +254,41 @@ export default function LoanDetails() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
         <div>
           <h1 className="text-2xl font-black text-slate-900">
             Empréstimo de {loan.client?.name}
           </h1>
+
           <p className="text-sm text-slate-500">
             Resumo financeiro, regras de atraso e controle das parcelas.
           </p>
         </div>
 
-        <Badge status={loan.status} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge status={loan.status} />
+
+          <PermissionGate permission={PERMISSIONS.LOAN_RENEGOTIATE}>
+            <button
+              type="button"
+              onClick={() => setRenegotiationOpen(true)}
+              disabled={!canRenegotiate}
+              title={
+                canRenegotiate
+                  ? 'Renegociar parcelas em aberto'
+                  : 'Este empréstimo não possui saldo em aberto para renegociar'
+              }
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition ${
+                canRenegotiate
+                  ? 'bg-slate-900 text-white hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md active:translate-y-0'
+                  : 'cursor-not-allowed bg-slate-100 text-slate-400 ring-1 ring-inset ring-slate-200'
+              }`}
+            >
+              <Repeat2 size={16} />
+              {canRenegotiate ? 'Renegociar' : 'Sem saldo para renegociar'}
+            </button>
+          </PermissionGate>
+        </div>
       </div>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -305,7 +372,7 @@ export default function LoanDetails() {
         entity="loans"
         entityId={loan.id}
         title="Histórico do empréstimo"
-        description="Veja alterações, parcelas e pagamentos relacionados a este empréstimo."
+        description="Veja alterações, parcelas, pagamentos e renegociações relacionados a este empréstimo."
       />
 
       <PaymentModal
@@ -314,6 +381,15 @@ export default function LoanDetails() {
         onClose={() => setPaymentOpen(false)}
         onSubmit={handlePaymentSubmit}
         loading={saving}
+      />
+
+      <RenegotiationModal
+        open={renegotiationOpen}
+        currentAmount={summary.updatedOpenValue}
+        loan={loan}
+        onClose={() => setRenegotiationOpen(false)}
+        onSubmit={handleRenegotiationSubmit}
+        loading={renegotiating}
       />
     </div>
   );
@@ -325,6 +401,7 @@ function Info({ label, value }) {
       <p className="text-xs font-semibold uppercase text-slate-500">
         {label}
       </p>
+
       <p className="mt-1 text-sm font-medium text-slate-800">
         {value || '-'}
       </p>
