@@ -108,7 +108,7 @@ npm run preview
 3. Histórico visual de auditoria ✅
 4. Multas e juros por atraso ✅
 5. Renegociação de empréstimo ✅
-6. Contrato PDF automático
+6. Contrato PDF automático ✅
 7. Anexos de documentos com Supabase Storage
 8. Notificações de vencimento
 9. Gráficos financeiros com Recharts

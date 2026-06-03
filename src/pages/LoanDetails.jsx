@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Repeat2 } from 'lucide-react';
+import { FileText, Repeat2 } from 'lucide-react';
 import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import FinancialCard from '../components/cards/FinancialCard.jsx';
@@ -27,6 +27,7 @@ import {
   formatPercent,
 } from '../utils/formatters.js';
 import { PERMISSIONS } from '../utils/permissions.js';
+import { generateLoanContractPdf } from '../utils/contractPdf.js';
 
 export default function LoanDetails() {
   const { id } = useParams();
@@ -109,6 +110,22 @@ export default function LoanDetails() {
       setError(getFriendlySupabaseError(err));
     } finally {
       setRenegotiating(false);
+    }
+  }
+
+  function handleGenerateContract() {
+    try {
+      if (!hasPermission(PERMISSIONS.LOAN_CONTRACT_GENERATE)) {
+        setError('Você não tem permissão para gerar contrato.');
+        return;
+      }
+
+      generateLoanContractPdf({
+        loan,
+        installments: enrichedInstallments,
+      });
+    } catch (err) {
+      setError(getFriendlySupabaseError(err));
     }
   }
 
@@ -267,6 +284,17 @@ export default function LoanDetails() {
 
         <div className="flex flex-wrap items-center gap-3">
           <Badge status={loan.status} />
+
+          <PermissionGate permission={PERMISSIONS.LOAN_CONTRACT_GENERATE}>
+            <button
+              type="button"
+              onClick={handleGenerateContract}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-700 ring-1 ring-inset ring-slate-200 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md active:translate-y-0"
+            >
+              <FileText size={16} />
+              Gerar contrato
+            </button>
+          </PermissionGate>
 
           <PermissionGate permission={PERMISSIONS.LOAN_RENEGOTIATE}>
             <button
