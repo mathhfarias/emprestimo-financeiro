@@ -9,6 +9,7 @@ import RenegotiationModal from '../components/forms/RenegotiationModal.jsx';
 import PermissionGate from '../components/ui/PermissionGate.jsx';
 import SimpleTable from '../components/tables/SimpleTable.jsx';
 import AuditTrail from '../components/cards/AuditTrail.jsx';
+import DocumentAttachments from '../components/cards/DocumentAttachments.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getLoanById } from '../services/loansService.js';
 import {
@@ -385,6 +386,13 @@ export default function LoanDetails() {
 
         <Info label="Observações" value={loan.notes} />
       </section>
+
+      <DocumentAttachments
+        targetType="loan"
+        targetId={loan.id}
+        title="Documentos do empréstimo"
+        description="Anexe contrato assinado, comprovantes e documentos diretamente relacionados a este empréstimo."
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-slate-900">Parcelas</h2>

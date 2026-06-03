@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AuditTrail from '../components/cards/AuditTrail.jsx';
+import DocumentAttachments from '../components/cards/DocumentAttachments.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import Button from '../components/ui/Button.jsx';
 import PermissionGate from '../components/ui/PermissionGate.jsx';
@@ -161,6 +162,13 @@ export default function ClientDetails() {
           <Info label="Observações" value={client.notes} />
         </div>
       </section>
+
+      <DocumentAttachments
+        targetType="client"
+        targetId={client.id}
+        title="Documentos do cliente"
+        description="Anexe RG, CPF, comprovante de residência e outros documentos cadastrais do cliente."
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-slate-900">

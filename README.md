@@ -8,6 +8,7 @@ Sistema web interno para controle administrativo de clientes, empréstimos, parc
 - Tailwind CSS
 - Supabase PostgreSQL
 - Supabase Auth
+- Supabase Storage para anexos privados
 - Row Level Security no banco
 - Netlify para deploy
 
@@ -66,6 +67,25 @@ supabase/schema.sql
 4. Crie pelo menos um usuário em **Authentication > Users**.
 5. Faça login no sistema com esse usuário.
 
+## Item 7 — Anexos com Supabase Storage
+
+A V11 adiciona uma área de anexos nas telas:
+
+- **Detalhes do cliente**: RG, CPF, comprovante de residência e documentos cadastrais.
+- **Detalhes do empréstimo**: contrato assinado, comprovantes e documentos do acordo.
+
+Formatos aceitos: PDF, PNG, JPG, WEBP, DOC e DOCX, com limite de 10 MB por arquivo. O bucket `documents` é privado e cada arquivo fica salvo dentro da pasta do usuário autenticado.
+
+Para atualizar um banco que já existe, execute apenas este arquivo no SQL Editor do Supabase:
+
+```text
+supabase/v11_document_attachments.sql
+```
+
+Esta migration é compatível com bases que usam `user_id` ou `owner_id` para identificar o usuário dono do registro. Ela também evita depender de chave estrangeira direta para `clients` e `loans`, justamente para funcionar em bancos já criados manualmente ou em versões anteriores do projeto.
+
+Depois faça o deploy normalmente no Netlify.
+
 ## Build
 
 ```bash
@@ -100,6 +120,7 @@ npm run preview
 - Atualização automática do status do empréstimo para quitado ou atrasado.
 - Dashboard com total emprestado, recebido, aberto, clientes, empréstimos ativos e parcelas vencidas.
 - Tela financeira com filtro por mês/ano e exportação CSV.
+- Anexos de documentos em clientes e empréstimos com Supabase Storage privado.
 
 ## Sugestões futuras
 
@@ -109,7 +130,7 @@ npm run preview
 4. Multas e juros por atraso ✅
 5. Renegociação de empréstimo ✅
 6. Contrato PDF automático ✅
-7. Anexos de documentos com Supabase Storage
+7. Anexos de documentos com Supabase Storage ✅
 8. Notificações de vencimento
 9. Gráficos financeiros com Recharts
 10. Testes automatizados
