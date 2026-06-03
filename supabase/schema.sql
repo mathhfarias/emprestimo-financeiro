@@ -506,3 +506,136 @@ create index if not exists idx_payments_payment_date on public.payments(payment_
 
 create index if not exists idx_audit_logs_user_id on public.audit_logs(user_id);
 create index if not exists idx_audit_logs_entity on public.audit_logs(entity, entity_id);
+
+-- =============================
+-- 8. Anexos de documentos com Supabase Storage
+-- =============================
+-- Para atualizar um banco já existente, prefira executar:
+-- supabase/v11_document_attachments.sql
+
+insert into storage.buckets (
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types
+)
+values (
+  'documents',
+  'documents',
+  false,
+  10485760,
+  array[
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create table if not exists public.document_attachments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  client_id uuid references public.clients(id) on delete cascade,
+  loan_id uuid references public.loans(id) on delete cascade,
+  file_name text not null,
+  storage_path text not null unique,
+  mime_type text,
+  size_bytes bigint not null default 0 check (size_bytes >= 0),
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint document_attachments_target_check check (
+    (client_id is not null and loan_id is null)
+    or
+    (client_id is null and loan_id is not null)
+  )
+);
+
+drop trigger if exists set_document_attachments_updated_at on public.document_attachments;
+create trigger set_document_attachments_updated_at
+before update on public.document_attachments
+for each row execute function public.set_updated_at();
+
+alter table public.document_attachments enable row level security;
+
+drop policy if exists "document_attachments_select_own" on public.document_attachments;
+create policy "document_attachments_select_own"
+on public.document_attachments for select
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists "document_attachments_insert_own" on public.document_attachments;
+create policy "document_attachments_insert_own"
+on public.document_attachments for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and coalesce(uploaded_by, auth.uid()) = auth.uid()
+);
+
+drop policy if exists "document_attachments_update_own" on public.document_attachments;
+create policy "document_attachments_update_own"
+on public.document_attachments for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+drop policy if exists "document_attachments_delete_own" on public.document_attachments;
+create policy "document_attachments_delete_own"
+on public.document_attachments for delete
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists "documents_storage_select_own_folder" on storage.objects;
+create policy "documents_storage_select_own_folder"
+on storage.objects for select
+to authenticated
+using (
+  bucket_id = 'documents'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "documents_storage_insert_own_folder" on storage.objects;
+create policy "documents_storage_insert_own_folder"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'documents'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "documents_storage_update_own_folder" on storage.objects;
+create policy "documents_storage_update_own_folder"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'documents'
+  and (storage.foldername(name))[1] = auth.uid()::text
+)
+with check (
+  bucket_id = 'documents'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "documents_storage_delete_own_folder" on storage.objects;
+create policy "documents_storage_delete_own_folder"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'documents'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create index if not exists idx_document_attachments_user_id on public.document_attachments(user_id);
+create index if not exists idx_document_attachments_client_id on public.document_attachments(client_id);
+create index if not exists idx_document_attachments_loan_id on public.document_attachments(loan_id);
+create index if not exists idx_document_attachments_created_at on public.document_attachments(created_at desc);
